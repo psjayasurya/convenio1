@@ -1110,7 +1110,7 @@ body.view-control-buttons .viewControlButton {
     #loader img {
       width: 120px;
       height: auto;
-      animation: spin 3s linear infinite;
+      animation: spin 2s linear infinite;
     }
 
 
