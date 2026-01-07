@@ -70,17 +70,32 @@
   // Initialize viewer.
   var viewer = new Marzipano.Viewer(panoElement, viewerOpts);
 
-  // Create scenes.
-  var scenes = data.scenes.map(function(data) {
-    var urlPrefix = "https://ggzftdlppjdrqugcrhgz.supabase.co/storage/v1/object/public/convenio/tiles%20(1)";
-    var source = Marzipano.ImageUrlSource.fromString(
-      urlPrefix + "/" + data.id + "/{z}/{f}/{y}/{x}.jpg",
-      { cubeMapPreviewUrl: urlPrefix + "/" + data.id + "/preview.jpg" });
-    var geometry = new Marzipano.CubeGeometry(data.levels);
+  // Supabase base URL for single images
+  var SUPABASE_BASE_URL = 'https://ggzftdlppjdrqugcrhgz.supabase.co/storage/v1/object/public/convineo/images';
+  var SUPABASE_IMAGES_URL = 'https://ggzftdlppjdrqugcrhgz.supabase.co/storage/v1/object/public/iittnifvirtualtour/images%20(1)/img';
+  var USE_SUPABASE = true;
 
-    var limiter = Marzipano.RectilinearView.limit.traditional(data.faceSize, 100*Math.PI/180, 120*Math.PI/180);
-    var view = new Marzipano.RectilinearView(data.initialViewParameters, limiter);
+  // Create scenes from single 360 images
+  var scenes = data.scenes.map(function(sceneData) {
+    var imageUrl;
+    if (USE_SUPABASE) {
+      imageUrl = SUPABASE_BASE_URL + '/' + sceneData.id + '.jpg';
+    } else {
+      // Local fallback
+      imageUrl = 'static/images/' + sceneData.id + '.jpg';
+    }
 
+    // Load single equirectangular image source
+    var source = Marzipano.ImageUrlSource.fromString(imageUrl);
+
+    // Geometry for equirectangular projection
+    var geometry = new Marzipano.EquirectGeometry([{ width: 4000 }]); // Assuming 4K images
+
+    // Limit FOV and set initial view
+    var limiter = Marzipano.RectilinearView.limit.traditional(1024, 100*Math.PI/180, 120*Math.PI/180);
+    var view = new Marzipano.RectilinearView(sceneData.initialViewParameters, limiter);
+
+    // Create scene
     var scene = viewer.createScene({
       source: source,
       geometry: geometry,
@@ -88,25 +103,20 @@
       pinFirstLevel: true
     });
 
-    // Create link hotspots.
-    data.linkHotspots.forEach(function(hotspot) {
-      var element = createLinkHotspotElement(hotspot);
-      scene.hotspotContainer().createHotspot(element, { yaw: hotspot.yaw, pitch: hotspot.pitch });
+    // Add link hotspots
+    sceneData.linkHotspots.forEach(function(hs) {
+      var el = createLinkHotspotElement(hs);
+      scene.hotspotContainer().createHotspot(el, { yaw: hs.yaw, pitch: hs.pitch });
     });
 
-    // Create info hotspots.
-    data.infoHotspots.forEach(function(hotspot) {
-      var element = createInfoHotspotElement(hotspot);
-      scene.hotspotContainer().createHotspot(element, { yaw: hotspot.yaw, pitch: hotspot.pitch });
+    // Add info hotspots
+    sceneData.infoHotspots.forEach(function(hs) {
+      var el = createInfoHotspotElement(hs);
+      scene.hotspotContainer().createHotspot(el, { yaw: hs.yaw, pitch: hs.pitch });
     });
 
-    return {
-      data: data,
-      scene: scene,
-      view: view
-    };
+    return { data: sceneData, scene: scene, view: view };
   });
-
   // Set up autorotate, if enabled.
   var autorotate = Marzipano.autorotate({
     yawSpeed: 0.03,
